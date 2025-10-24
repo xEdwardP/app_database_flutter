@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "841575265745",
+    "project_id": "database-unicah-34d91",
+    "storage_bucket": "database-unicah-34d91.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:841575265745:android:fd799b3e022fc653901cf0",
+        "android_client_info": {
+          "package_name": "com.example.app_database_flutter"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAcAfzHoUpUzWJ3V0_qLuBSX4MyjcUstGk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

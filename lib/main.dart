@@ -2,18 +2,17 @@ import 'package:flutter/material.dart';
 import '../models/note.dart';
 import '../data/notes_db.dart';
 
-// Main
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   runApp(const MyApp());
 }
 
-// Clase Principal MyApp
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      debugShowCheckedModeBanner: false,
       title: 'Database App',
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
@@ -24,7 +23,6 @@ class MyApp extends StatelessWidget {
   }
 }
 
-// Widget de la pantalla principal
 class MyHomePage extends StatefulWidget {
   const MyHomePage({super.key, required this.title});
   final String title;
@@ -34,7 +32,6 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  final _input = TextEditingController();
   List<Note> _notes = [];
   bool _loading = true;
 
@@ -50,14 +47,6 @@ class _MyHomePageState extends State<MyHomePage> {
       _notes = data;
       _loading = false;
     });
-  }
-
-  Future<void> _create() async {
-    final txt = _input.text.trim();
-    if (txt.isEmpty) return;
-    await NotesDb.instance.create(Note(text: txt));
-    _input.clear();
-    await _reload();
   }
 
   Future<void> _edit(Note n) async {
@@ -80,7 +69,9 @@ class _MyHomePageState extends State<MyHomePage> {
       ),
     );
     if (newText == null || newText.isEmpty) return;
-    await NotesDb.instance.update(Note(id: n.id, text: newText));
+    await NotesDb.instance.update(
+      Note(id: n.id, text: newText, date: n.date, category: n.category),
+    );
     await _reload();
   }
 
@@ -89,7 +80,6 @@ class _MyHomePageState extends State<MyHomePage> {
     await _reload();
   }
 
-  // Interfaz de usuario
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -99,28 +89,6 @@ class _MyHomePageState extends State<MyHomePage> {
       ),
       body: Column(
         children: [
-          Padding(
-            padding: const EdgeInsets.all(12),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _input,
-                    decoration: const InputDecoration(
-                      hintText: 'Escribe una nota...',
-                      border: OutlineInputBorder(),
-                    ),
-                    onSubmitted: (_) => _create(),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                ElevatedButton(
-                  onPressed: _create,
-                  child: const Text('Agregar'),
-                ),
-              ],
-            ),
-          ),
           if (_loading)
             const Expanded(child: Center(child: CircularProgressIndicator()))
           else
@@ -133,7 +101,9 @@ class _MyHomePageState extends State<MyHomePage> {
                         final note = _notes[i];
                         return ListTile(
                           title: Text(note.text),
-                          subtitle: Text('id: ${note.id ?? "-"}'),
+                          subtitle: Text(
+                            'Fecha: ${note.date.toLocal().toString().split(' ')[0]} | Categoría: ${note.category}',
+                          ),
                           onTap: () => _edit(note),
                           trailing: IconButton(
                             icon: const Icon(Icons.delete),
@@ -147,27 +117,104 @@ class _MyHomePageState extends State<MyHomePage> {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () async {
-          final ctrl = TextEditingController();
-          final txt = await showDialog<String>(
+          final textCtrl = TextEditingController();
+          DateTime? selectedDate;
+          String? selectedCategory;
+
+          final result = await showDialog<Note>(
             context: context,
-            builder: (_) => AlertDialog(
-              title: const Text('Nueva nota'),
-              content: TextField(controller: ctrl, autofocus: true),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('Cancelar'),
+            builder: (_) => StatefulBuilder(
+              builder: (context, setState) => AlertDialog(
+                title: const Text('Nueva nota'),
+                content: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      TextField(
+                        controller: textCtrl,
+                        decoration: const InputDecoration(
+                          labelText: 'Texto',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              selectedDate == null
+                                  ? 'Fecha no seleccionada'
+                                  : 'Fecha: ${selectedDate!.toLocal().toString().split(' ')[0]}',
+                            ),
+                          ),
+                          TextButton(
+                            onPressed: () async {
+                              final now = DateTime.now();
+                              final picked = await showDatePicker(
+                                context: context,
+                                initialDate: now,
+                                firstDate: DateTime(now.year - 5),
+                                lastDate: DateTime(now.year + 5),
+                              );
+                              if (picked != null) {
+                                setState(() => selectedDate = picked);
+                              }
+                            },
+                            child: const Text('Seleccionar fecha'),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      DropdownButtonFormField<String>(
+                        value: selectedCategory,
+                        decoration: const InputDecoration(
+                          labelText: 'Categoría',
+                          border: OutlineInputBorder(),
+                        ),
+                        items: ['Personal', 'Trabajo', 'Estudio', 'Otro']
+                            .map(
+                              (cat) => DropdownMenuItem(
+                                value: cat,
+                                child: Text(cat),
+                              ),
+                            )
+                            .toList(),
+                        onChanged: (val) =>
+                            setState(() => selectedCategory = val),
+                      ),
+                    ],
+                  ),
                 ),
-                ElevatedButton(
-                  onPressed: () => Navigator.pop(context, ctrl.text.trim()),
-                  child: const Text('Guardar'),
-                ),
-              ],
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('Cancelar'),
+                  ),
+                  ElevatedButton(
+                    onPressed: () {
+                      final txt = textCtrl.text.trim();
+                      if (txt.isEmpty ||
+                          selectedDate == null ||
+                          selectedCategory == null)
+                        return;
+                      final newNote = Note(
+                        text: txt,
+                        date: selectedDate!,
+                        category: selectedCategory!,
+                      );
+                      Navigator.pop(context, newNote);
+                    },
+                    child: const Text('Guardar'),
+                  ),
+                ],
+              ),
             ),
           );
-          if (txt == null || txt.isEmpty) return;
-          await NotesDb.instance.create(Note(text: txt));
-          await _reload();
+
+          if (result != null) {
+            await NotesDb.instance.create(result);
+            await _reload();
+          }
         },
         child: const Icon(Icons.add),
       ),

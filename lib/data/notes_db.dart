@@ -12,13 +12,13 @@ class NotesDb {
   Future<Database> get database async {
     if (_db != null) return _db!;
     final dbPath = await getDatabasesPath();
-    final path = join(dbPath, 'demo_crud.db');
+    final path = join(dbPath, 'demo_crud2.db');
     _db = await openDatabase(
       path,
       version: 1,
       onCreate: (db, v) async {
         await db.execute(
-          '''CREATE TABLE notes(id INTEGER PRIMARY KEY AUTOINCREMENT, text TEXT NOT NULL);''',
+          '''CREATE TABLE notes(id INTEGER PRIMARY KEY AUTOINCREMENT, text TEXT NOT NULL, date DATE NOT NULL, category TEXT NOT NULL);''',
         );
       },
     );
@@ -37,7 +37,11 @@ class NotesDb {
     final db = await database;
     return db.update(
       'notes',
-      {'text': n.text},
+      {
+        'text': n.text,
+        'date': n.date.toIso8601String().split('T').first,
+        'category': n.category,
+      },
       where: 'id = ?',
       whereArgs: [n.id],
     );

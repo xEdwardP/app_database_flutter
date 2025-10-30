@@ -50,29 +50,99 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   Future<void> _edit(Note n) async {
-    final ctrl = TextEditingController(text: n.text);
-    final newText = await showDialog<String>(
+    final textCtrl = TextEditingController(text: n.text);
+    DateTime selectedDate = n.date;
+    String selectedCategory = n.category;
+
+    final updatedNote = await showDialog<Note>(
       context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Editar nota'),
-        content: TextField(controller: ctrl, autofocus: true),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancelar'),
+      builder: (_) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: const Text('Editar nota'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: textCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'Texto',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'Fecha: ${selectedDate.toLocal().toString().split(' ')[0]}',
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: () async {
+                        final picked = await showDatePicker(
+                          context: context,
+                          initialDate: selectedDate,
+                          firstDate: DateTime(2000),
+                          lastDate: DateTime(2100),
+                        );
+                        if (picked != null) {
+                          setState(() => selectedDate = picked);
+                        }
+                      },
+                      child: const Text('Cambiar fecha'),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  value: selectedCategory,
+                  decoration: const InputDecoration(
+                    labelText: 'Categoría',
+                    border: OutlineInputBorder(),
+                  ),
+                  items: ['Personal', 'Trabajo', 'Estudio', 'Otro']
+                      .map(
+                        (cat) => DropdownMenuItem(value: cat, child: Text(cat)),
+                      )
+                      .toList(),
+                  onChanged: (val) {
+                    if (val != null) {
+                      setState(() => selectedCategory = val);
+                    }
+                  },
+                ),
+              ],
+            ),
           ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, ctrl.text.trim()),
-            child: const Text('Guardar'),
-          ),
-        ],
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancelar'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                final txt = textCtrl.text.trim();
+                if (txt.isEmpty) return;
+                final updated = Note(
+                  id: n.id,
+                  text: txt,
+                  date: selectedDate,
+                  category: selectedCategory,
+                );
+                Navigator.pop(context, updated);
+              },
+              child: const Text('Guardar'),
+            ),
+          ],
+        ),
       ),
     );
-    if (newText == null || newText.isEmpty) return;
-    await NotesDb.instance.update(
-      Note(id: n.id, text: newText, date: n.date, category: n.category),
-    );
-    await _reload();
+
+    if (updatedNote != null) {
+      await NotesDb.instance.update(updatedNote);
+      await _reload();
+    }
   }
 
   Future<void> _delete(Note n) async {
